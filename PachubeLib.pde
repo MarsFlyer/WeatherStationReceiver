@@ -1,9 +1,10 @@
-/* Pachube Library 
+/* Pachube Library  
 GET
 PUT
 */
 
 long lastConnectionTime;
+///Client client(server, 80);
 
 //#define LINE_BUFF_SIZE 79
 
@@ -226,13 +227,53 @@ void ethernetInit()
   pinMode(resetPin, INPUT);      // sets the digital pin input
   delay(ms);  //for ethernet chip to reset
   wdt_reset();
-  Ethernet.begin(mac,ip,gateway,subnet);
+  ///Ethernet.begin(mac,ip,gateway,subnet);
   delay(ms);  //for ethernet chip to reset
-  Ethernet.begin(mac,ip,gateway,subnet);
+  while (Dhcp.beginWithDHCP(mac) != 1)
+  {
+    TEST_PRINTLN("Error getting IP address via DHCP, trying again...");
+    delay(15000);
+  }
+  ///Ethernet.begin(mac,ip,gateway,subnet);
   delay(ms);  //for ethernet chip to reset
   ///TEST_PRINT(freeMemory());
   TEST_PRINTLN(" done");
   ///ping();
+  
+  DNSClient dns;
+  // Use "server" to hold the DNS server address while we initialise
+  // the DNS code
+  Dhcp.getDnsServerIp(server);
+  dns.begin(server);
+
+  // Resolve the hostname to an IP address
+  // Re-use "server" to hold the address for the resolved hostname
+  int err = dns.gethostbyname(kHostname, server);
+  if (err == 1)
+  {
+    Serial.print(kHostname);
+    Serial.print(" resolved to ");
+    Serial.print((int)server[0]);
+    Serial.print(".");
+    Serial.print((int)server[1]);
+    Serial.print(".");
+    Serial.print((int)server[2]);
+    Serial.print(".");
+    Serial.println((int)server[3]);
+    /*
+    if (client.connect()) {
+      Serial.println("connected");
+      client.println("GET /search?q=arduino HTTP/1.0");
+      client.println();
+    } else {
+      Serial.println("connection failed");
+    } */
+  }
+  else
+  {
+    Serial.println("DNS lookup failed");
+  }
+
 }
 
 void procReset()
