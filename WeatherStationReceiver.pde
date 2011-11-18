@@ -1,4 +1,4 @@
-/*
+/* 
 WeatherStationReceiverPachube 
 =============================
 Paul Allen 2011-06
@@ -73,7 +73,10 @@ Maybe add:
 #include <avr/wdt.h>       // Watchdog Timer
 #include <OneWire.h>            // Internal temperature.
 #include <DallasTemperature.h>
+#include <Dhcp.h>
+#include <dns.h>
 
+char* kHostname = "api.pachube.com";
 /*--------------------------------------------------------------------------------------
   Variables
 --------------------------------------------------------------------------------------*/
@@ -121,6 +124,7 @@ unsigned long lLast;
 
 // Ethernet settings
 byte mac[] = { 0x90, 0xA2, 0xDA, 0x00, 0x34, 0xF2 };  
+/*
 #define ROUTER 1
 #define WIN7 1
 #ifdef ROUTER
@@ -138,6 +142,7 @@ byte mac[] = { 0x90, 0xA2, 0xDA, 0x00, 0x34, 0xF2 };
     byte subnet[]  = { 255, 255, 255, 0 };
   #endif     
 #endif 
+*/
 
 // pachube settings
 byte server[] = { 173, 203, 98, 29 }; // api.pachube.com
