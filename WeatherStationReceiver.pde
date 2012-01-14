@@ -50,6 +50,11 @@ Maybe add:
  * reset happens during first transition/bit in.
 */
 
+// Debug settings
+#define DEBUG 1
+#define TESTING 1
+///#define ONEWIRE 1
+///#define WATCHDOG 1
 
 // Hardware ports:
  //RF Data Port D8
@@ -57,6 +62,7 @@ Maybe add:
 #define resetPin 9    // Ethernet reset
 #define pinLED 5      // Status LED
 #define pinOneWire 2  // One-wire bus
+
 
 /*--------------------------------------------------------------------------------------
   Includes
@@ -70,9 +76,11 @@ Maybe add:
 //#include <avr/pgmspace.h>  // To store http literal strings
 #include <MemoryFree.h>    // To check memory problems.
 #include <avr/io.h>
-#include <avr/wdt.h>       // Watchdog Timer
-#include <OneWire.h>            // Internal temperature.
-#include <DallasTemperature.h>
+#include <avr/wdt.h>       // Watchdog Timer (used by hard reset in Pachube lib)
+#ifdef ONEWIRE
+  #include <OneWire.h>            // Internal temperature.
+  #include <DallasTemperature.h>
+#endif
 #include <Dhcp.h>
 #include <dns.h>
 
@@ -155,7 +163,6 @@ int iConnections = 0;
 ///#define DEBUG
 
 // For detailed debuging:
-///#define DEBUG 1
 #ifdef DEBUG
   #define DEBUG_PRINT(x)      Serial.print (x)
   #define DEBUG_PRINTDEC(x)   Serial.print (x, DEC)
@@ -167,7 +174,6 @@ int iConnections = 0;
 #endif 
 
 // For main testing:
-#define TESTING 1
 #ifdef TESTING
   #define TEST_PRINT(x)      Serial.print (x)
   #define TEST_PRINTDEC(x)   Serial.print (x, DEC)
@@ -179,7 +185,6 @@ int iConnections = 0;
 #endif 
 
 // For one-wire:
-#define ONEWIRE 1
 #ifdef ONEWIRE
   // Objects:
   // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
@@ -193,10 +198,12 @@ unsigned long milWatchdog;
 #define milWatchdogInterval 4000  // Watchdog timer resets the board after 8000.
 unsigned long milReading;     // Last data from WSR
 unsigned long milPachube;     // Last sending to Pachube
+unsigned long milLastPacket;  // Last packet from the weather station
 #define milReadingInterval 3000   // Wait before sending data. 3 sec
 #define milPachubeInterval 30000  // Don't send data more frequently. 30 sec
 #define milTypeInterval 600000    // Don't send stale data. 10 mins * 60 sec * 1000 ms
-#define milSendInterval 120000    // Minimum period of sending. 2 mins * 60 sec * 1000 ms
+#define milSendInterval 150000    // Minimum period of sending. 3 mins * 60 sec * 1000 ms
+                                  // Weather station is normally every 128 seconds
 int iCount = 0;
 int iCount2 = 0;
 
@@ -210,20 +217,16 @@ void setup(void)
     Serial.println( "Weather Station Receiver has powered up" );
   #endif
 
-  ///MCUSR=0;
-  ///wdt_enable(WDTO_8S); // setup Watch Dog Timer to 8 sec
-  
   Init_Ports();
-  wdt_reset();
   Init_RF_Interpreters();
   interrupts();   // Enable interrupts (NOTE: is this necessary? Should be enabled by default)
 
-  wdt_reset();
   ethernetInit();
+  
   milSecond = millis() + 1000;
   milWatchdog = millis();
   milPachube = 0;
-  wdt_reset();
+  milLastPacket = millis();
 
   #ifdef ONEWIRE
     sensors.begin();  // Enable One Wire.
@@ -233,10 +236,14 @@ void setup(void)
   digitalWrite(pinLED, HIGH);
   delay(500);
   digitalWrite(pinLED, LOW);
-  wdt_reset();
   
-  DEBUG_PRINT(freeMemory());
-  DEBUG_PRINTLN("=memory");
+  TEST_PRINT(freeMemory());
+  TEST_PRINTLN("=memory");
+
+  #ifdef WATCHDOG
+    MCUSR=0;
+    wdt_enable(WDTO_8S); // setup Watch Dog Timer to 8 sec
+  #endif
 }
 
 
@@ -252,15 +259,17 @@ void loop(void)
     milSecond = millis() + 1000;
     
     // Watch Dog Timer will reset the arduino if it doesn't get "wdt_reset();" every 8 sec
-    if ((millis() - milWatchdog) > milWatchdogInterval) {
-      milWatchdog = millis();
-      wdt_reset();
-      /* TEST_PRINT("Reset Watchdog:");
-      TEST_PRINTLN(millis()/1000); */
-      if ((milPachube != 0) && (millis() - milPachube) > milTypeInterval) {
-         digitalWrite(pinLED, LOW);
+    #ifdef WATCHDOG
+      if ((millis() - milWatchdog) > milWatchdogInterval) {
+        milWatchdog = millis();
+        wdt_reset();
+        /* TEST_PRINT("Reset Watchdog:");
+        TEST_PRINTLN(millis()/1000); */
+        if ((milPachube != 0) && (millis() - milPachube) > milTypeInterval) {
+           digitalWrite(pinLED, LOW);
+        }
       }
-    }
+    #endif
     
     // Wait for all recent packets to be received.
     // Second set often includes extra data e.g. Humidity!
@@ -359,9 +368,10 @@ void Pachube_Send()
   TEST_PRINTLN(" pachube");
   strcat(buf, "\0");
   TEST_PRINTLN(buf);
-  wdt_reset();
+  #ifdef WATCHDOG
+    wdt_reset();
+  #endif
   pachube("PUT", buf);
-  wdt_reset();  
 }
 
 /**
@@ -437,6 +447,8 @@ void Packet_Converter_WS2355(void)
     #endif
 
     #ifdef DEBUG
+    Serial.println((millis()-milLastPacket)/1000);
+    milLastPacket = millis();
     //print it in binary text out the serial port
     Serial.print("BINARY=");
     for( b = WSR_TIMESTAMP_BIT_OFFSET ; b < (WSR_RFPACKETBITSIZE+WSR_TIMESTAMP_BIT_OFFSET) ; b++ )
@@ -758,11 +770,11 @@ void RF_Interpreter_WS2355( /*uiICP_CapturedPeriod, bICP_CapturedPeriodWasHigh*/
       {
         //short high, valid one bit
         bValidBit = WSR_BIT_ONE;
-        DEBUG_PRINT("1");
+        ///DEBUG_PRINT("1");
       } else if( (uiICP_CapturedPeriod >= WSR_LONG_PERIOD_MIN) && (uiICP_CapturedPeriod <= WSR_LONG_PERIOD_MAX) ) {
         //long high, valid zero bit
         bValidBit = WSR_BIT_ZERO;
-        DEBUG_PRINT("0");
+        ///DEBUG_PRINT("0");
       } else {
         //invalid high period, in the dead zone between short and long bit period lengths
         WSR_RESET();
