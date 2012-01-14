@@ -3,6 +3,7 @@ GET
 PUT
 */
 
+byte server[4];
 long lastConnectionTime;
 ///Client client(server, 80);
 
@@ -253,13 +254,6 @@ void ethernetInit()
   {
     Serial.print(kHostname);
     Serial.print(" resolved to ");
-    Serial.print((int)server[0]);
-    Serial.print(".");
-    Serial.print((int)server[1]);
-    Serial.print(".");
-    Serial.print((int)server[2]);
-    Serial.print(".");
-    Serial.println((int)server[3]);
     /*
     if (client.connect()) {
       Serial.println("connected");
@@ -271,9 +265,16 @@ void ethernetInit()
   }
   else
   {
-    Serial.println("DNS lookup failed");
+    Serial.print("DNS lookup failed, defaulted to ");
+    server[0] = 173; server[1] = 203; server[2] = 98; server[3] = 29 ; // api.pachube.com
   }
-
+  Serial.print((int)server[0]);
+  Serial.print(".");
+  Serial.print((int)server[1]);
+  Serial.print(".");
+  Serial.print((int)server[2]);
+  Serial.print(".");
+  Serial.println((int)server[3]);
 }
 
 void procReset()

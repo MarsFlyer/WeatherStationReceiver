@@ -144,8 +144,6 @@ byte mac[] = { 0x90, 0xA2, 0xDA, 0x00, 0x34, 0xF2 };
 #endif 
 */
 
-// pachube settings
-byte server[] = { 173, 203, 98, 29 }; // api.pachube.com
 ///Client client(server, 80);
 char buf[60];    // Sending data
 char buf2[30];   // Getting line & temporary data
@@ -154,7 +152,7 @@ int iConnections = 0;
 
 // Comment out for a normal build
 // Uncomment for a debug build
-//#define DEBUG
+///#define DEBUG
 
 // For detailed debuging:
 ///#define DEBUG 1
@@ -236,6 +234,9 @@ void setup(void)
   delay(500);
   digitalWrite(pinLED, LOW);
   wdt_reset();
+  
+  DEBUG_PRINT(freeMemory());
+  DEBUG_PRINTLN("=memory");
 }
 
 
