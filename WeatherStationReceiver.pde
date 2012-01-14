@@ -255,8 +255,9 @@ void loop(void)
   Packet_Converter_WS2355();
   
   // Extra calculations maybe preventing collection of packets, so only check every second.
+  ///if (false) {
   if (millis() > milSecond) {
-    milSecond = millis() + 1000;
+    milSecond = millis() + 947;  // use a prime number to avoid clashes.
     
     // Watch Dog Timer will reset the arduino if it doesn't get "wdt_reset();" every 8 sec
     #ifdef WATCHDOG
