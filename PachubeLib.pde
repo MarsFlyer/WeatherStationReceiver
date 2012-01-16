@@ -140,7 +140,7 @@ String pachube(char* verb, char* dataStr)
         if (client.available())
         {
           char c = client.read();
-          TEST_PRINT(c);
+          DEBUG_PRINT(c);
           if (c == '\n') {buf2[line_cursor] = '\0'; break;}
           // Ignore CRs
           if (c != '\r')
@@ -220,14 +220,18 @@ void ethernetInit()
   ///ping();
   TEST_PRINT(freeMemory());
   TEST_PRINT(" Ethernet init...");
-  wdt_reset();
+  #ifdef WATCHDOG
+    wdt_reset();
+  #endif
   pinMode(resetPin, OUTPUT);      // sets the digital pin as output
   digitalWrite(resetPin, LOW);
   delay(ms*4);  //for ethernet chip to reset - needs ~4 seconds to properly reset.
   digitalWrite(resetPin, HIGH);
   pinMode(resetPin, INPUT);      // sets the digital pin input
   delay(ms);  //for ethernet chip to reset
-  wdt_reset();
+  #ifdef WATCHDOG
+    wdt_reset();
+  #endif
   ///Ethernet.begin(mac,ip,gateway,subnet);
   delay(ms);  //for ethernet chip to reset
   while (Dhcp.beginWithDHCP(mac) != 1)
@@ -235,10 +239,15 @@ void ethernetInit()
     TEST_PRINTLN("Error getting IP address via DHCP, trying again...");
     delay(15000);
   }
+  /*
+  const byte* ipAddr = Dhcp.getLocalIp();
+  TEST_PRINT("IP:");
+  TEST_PRINTLN(ip_to_str(ipAddr));
+  */
+  
   ///Ethernet.begin(mac,ip,gateway,subnet);
   delay(ms);  //for ethernet chip to reset
-  ///TEST_PRINT(freeMemory());
-  TEST_PRINTLN(" done");
+
   ///ping();
   
   DNSClient dns;
@@ -268,20 +277,14 @@ void ethernetInit()
     Serial.print("DNS lookup failed, defaulted to ");
     server[0] = 173; server[1] = 203; server[2] = 98; server[3] = 29 ; // api.pachube.com
   }
-  Serial.print((int)server[0]);
-  Serial.print(".");
-  Serial.print((int)server[1]);
-  Serial.print(".");
-  Serial.print((int)server[2]);
-  Serial.print(".");
-  Serial.println((int)server[3]);
+  TEST_PRINTLN(ip_to_str(server));
 }
 
 void procReset()
 {
   TEST_PRINTLN("Reset board");
   MCUSR=0;
-  wdt_enable(WDTO_1S); // setup Watch Dog Timer to 8 sec
+  wdt_enable(WDTO_1S); // setup Watch Dog Timer to 1 sec
   delay(2000);
 }
 
@@ -297,3 +300,11 @@ void ping()
   TEST_PRINTLN(pingBuf);
 }
 */
+// Just a utility function to nicely format an IP address.
+const char* ip_to_str(const uint8_t* ipAddr)
+{
+  static char buf[16];
+  sprintf(buf, "%d.%d.%d.%d\0", ipAddr[0], ipAddr[1], ipAddr[2], ipAddr[3]);
+  return buf;
+}
+

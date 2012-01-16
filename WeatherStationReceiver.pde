@@ -51,15 +51,16 @@ Maybe add:
 */
 
 // Debug settings
-#define DEBUG 1
 #define TESTING 1
-///#define ONEWIRE 1
+///#define DEBUG 1
+#define ONEWIRE 1
 ///#define WATCHDOG 1
 
 // Hardware ports:
- //RF Data Port D8
+ //RF Data Port D8   
+ //  Note, this is the ICP (Interrupt Capture Port) and can't be changed! It is not available on nanode.
  //PORTD6 and PORTD7, GREEN and RED test LED setup
-#define resetPin 9    // Ethernet reset
+#define resetPin 4    // Ethernet reset - used by badly behaved original Arduino Ethernet shield
 #define pinLED 5      // Status LED
 #define pinOneWire 2  // One-wire bus
 
@@ -201,7 +202,7 @@ unsigned long milPachube;     // Last sending to Pachube
 unsigned long milLastPacket;  // Last packet from the weather station
 #define milReadingInterval 3000   // Wait before sending data. 3 sec
 #define milPachubeInterval 30000  // Don't send data more frequently. 30 sec
-#define milTypeInterval 600000    // Don't send stale data. 10 mins * 60 sec * 1000 ms
+#define milTypeInterval 300000    // Don't send stale data. 600000 = 10 mins * 60 sec * 1000 ms
 #define milSendInterval 150000    // Minimum period of sending. 3 mins * 60 sec * 1000 ms
                                   // Weather station is normally every 128 seconds
 int iCount = 0;
@@ -216,10 +217,6 @@ void setup(void)
     Serial.begin( 38400 );   //using the serial port at 38400bps for debugging and logging
     Serial.println( "Weather Station Receiver has powered up" );
   #endif
-
-  Init_Ports();
-  Init_RF_Interpreters();
-  interrupts();   // Enable interrupts (NOTE: is this necessary? Should be enabled by default)
 
   ethernetInit();
   
@@ -237,6 +234,10 @@ void setup(void)
   delay(500);
   digitalWrite(pinLED, LOW);
   
+  Init_Ports();
+  Init_RF_Interpreters();
+  interrupts();   // Enable interrupts (NOTE: is this necessary? Should be enabled by default)
+
   TEST_PRINT(freeMemory());
   TEST_PRINTLN("=memory");
 
@@ -252,12 +253,12 @@ void setup(void)
  */
 void loop(void)
 {
-  Packet_Converter_WS2355();
+  ///Packet_Converter_WS2355();   // Calling it within the interrupt gives better results!
   
   // Extra calculations maybe preventing collection of packets, so only check every second.
   ///if (false) {
   if (millis() > milSecond) {
-    milSecond = millis() + 947;  // use a prime number to avoid clashes.
+    milSecond = millis() + 1000; 
     
     // Watch Dog Timer will reset the arduino if it doesn't get "wdt_reset();" every 8 sec
     #ifdef WATCHDOG
@@ -298,13 +299,14 @@ void loop(void)
 
 void Pachube_Send()
 {
+  TEST_PRINTLN("");
   TEST_PRINT("Send to Pachube:");
   TEST_PRINTLN(millis()/1000);
   // Reset buffer.
   sprintf(buf, "%s", "");
   if ((milType[0] != 0) && (millis() - milType[0]) < milTypeInterval) {
     fNum = siWSR_CurrentTemperature;
-    sprintf(buf2, "0,%s\r\n", ftoa(fString, fNum/10, 1));
+    sprintf(buf2, "0,%s\r\n", dtostrf(fNum/10, 3, 1, fString));
     strcat(buf, buf2);
   }
   else {
@@ -321,7 +323,7 @@ void Pachube_Send()
   }
   if ((milType[2] != 0) && (millis() - milType[2]) < milTypeInterval) {
     fNum = ulWSR_Rainfall_mm_x10;
-    sprintf(buf2, "2,%s\r\n", ftoa(fString, fNum/10, 1));
+    sprintf(buf2, "2,%s\r\n", dtostrf(fNum/10, 3, 1, fString));
     strcat(buf, buf2);
   }
   else {
@@ -330,10 +332,10 @@ void Pachube_Send()
   }
   if ((milType[3] != 0) && (millis() - milType[3]) < milTypeInterval) {
     fNum = uiWSR_CurrentWindSpeed_m_per_sec;
-    sprintf(buf2, "3,%s\r\n", ftoa(fString, fNum/10, 1));
+    sprintf(buf2, "3,%s\r\n", dtostrf(fNum/10, 3, 1, fString));
     strcat(buf, buf2);
     fNum = bWSR_CurrentWindDirection*22.5;
-    sprintf(buf2, "4,%s\r\n", ftoa(fString, fNum, 1));
+    sprintf(buf2, "4,%s\r\n", dtostrf(fNum, 3, 1, fString));
     strcat(buf, buf2);
   } 
   else {
@@ -356,7 +358,7 @@ void Pachube_Send()
     if (fTemperature > -100) {
       TEST_PRINT("TEMPINT=");
       TEST_PRINTLN(fTemperature);
-      sprintf(buf2, "6,%s\r\n", ftoa(fString, fTemperature, 1));
+      sprintf(buf2, "6,%s\r\n", dtostrf(fTemperature, 3, 1, fString));
       strcat(buf, buf2);
     }
   #endif
@@ -435,7 +437,8 @@ void Packet_Converter_WS2355(void)
   byte c;
   sint si;
 
-  if( bICP_WSR_PacketInputPointer != bICP_WSR_PacketOutputPointer )
+  if (true)
+  ///if( bICP_WSR_PacketInputPointer != bICP_WSR_PacketOutputPointer )   // Moved to RF Interpreter.
   {
     // A fresh packet is ready to check and convert
     #ifdef DEBUG
@@ -447,9 +450,12 @@ void Packet_Converter_WS2355(void)
     }
     #endif
 
-    #ifdef DEBUG
-    Serial.println((millis()-milLastPacket)/1000);
+    DEBUG_PRINT(millis());
+    DEBUG_PRINT(" ");
+    DEBUG_PRINTLN((millis()-milLastPacket));
     milLastPacket = millis();
+
+    #ifdef DEBUG
     //print it in binary text out the serial port
     Serial.print("BINARY=");
     for( b = WSR_TIMESTAMP_BIT_OFFSET ; b < (WSR_RFPACKETBITSIZE+WSR_TIMESTAMP_BIT_OFFSET) ; b++ )
@@ -492,8 +498,9 @@ void Packet_Converter_WS2355(void)
       b += (bICP_WSR_PacketData[bICP_WSR_PacketOutputPointer][6] >> 4);
       bWSR_StationTransmitterID = b;
       // Print to serial port
-      Serial.print( "STATIONID=" );
-      Serial.println( bWSR_StationTransmitterID, DEC );
+      DEBUG_PRINT( "ID=" );
+      DEBUG_PRINTDEC( bWSR_StationTransmitterID );
+      DEBUG_PRINTLN("");
 
       // Bits 4 and 5 of this byte are the sensor/packet ID
       b = bICP_WSR_PacketData[bICP_WSR_PacketOutputPointer][5];
@@ -511,14 +518,15 @@ void Packet_Converter_WS2355(void)
           siWSR_CurrentTemperature = (si - 300);
 
           // Print to serial port with decimal place management
-          Serial.print("TEMPERATURE=");
-          Serial.print( (siWSR_CurrentTemperature/10), DEC );
-          Serial.print( '.', BYTE );
+          DEBUG_PRINT("TEMP=");
+          DEBUG_PRINTDEC( (siWSR_CurrentTemperature/10));
+          DEBUG_PRINT( "." );
           if( siWSR_CurrentTemperature < 0 ) {
-            Serial.println( ((0-siWSR_CurrentTemperature)%10), DEC );
+            DEBUG_PRINTDEC( ((0-siWSR_CurrentTemperature)%10) );
           } else {
-            Serial.println( (siWSR_CurrentTemperature%10), DEC );
+            DEBUG_PRINTDEC( (siWSR_CurrentTemperature%10) );
           }
+          DEBUG_PRINTLN("");
 
           milReading = millis();
           milType[0] = millis();
@@ -533,8 +541,9 @@ void Packet_Converter_WS2355(void)
           bWSR_CurrentHumidity = c;
 
           // Print to serial port with decimal place management
-          Serial.print("HUMIDITY=");
-          Serial.println( bWSR_CurrentHumidity, DEC );
+          DEBUG_PRINT("HUM=");
+          DEBUG_PRINTDEC( bWSR_CurrentHumidity );
+          DEBUG_PRINTLN("");
 
           milReading = millis();
           milType[1] = millis();
@@ -551,10 +560,11 @@ void Packet_Converter_WS2355(void)
           ulWSR_Rainfall_mm_x10 = (((unsigned long)uiWSR_RainfallCount * 518) / 100);
 
           // Print to serial port 
-          Serial.print("RAIN=");
-          Serial.print( (ulWSR_Rainfall_mm_x10/10), DEC );
-          Serial.print( '.', BYTE );
-          Serial.println( (ulWSR_Rainfall_mm_x10%10), DEC );
+          DEBUG_PRINT("RAIN=");
+          DEBUG_PRINTDEC( (ulWSR_Rainfall_mm_x10/10) );
+          DEBUG_PRINT( "." );
+          DEBUG_PRINTDEC( (ulWSR_Rainfall_mm_x10%10) );
+          DEBUG_PRINTLN("");
 
           milReading = millis();
           milType[2] = millis();
@@ -574,13 +584,14 @@ void Packet_Converter_WS2355(void)
           uiWSR_CurrentWindSpeed_m_per_sec = (uint)si;
 
           // Print to serial port with decimal place management
-          Serial.print("WINDDIRECTION=");
-          Serial.println( strWindDirection[bWSR_CurrentWindDirection] );
+          DEBUG_PRINT("DIR=");
+          DEBUG_PRINTLN( strWindDirection[bWSR_CurrentWindDirection] );
 
-          Serial.print("WINDSPEED=");
-          Serial.print( (uiWSR_CurrentWindSpeed_m_per_sec/10), DEC );
-          Serial.print( '.', BYTE );
-          Serial.println( (uiWSR_CurrentWindSpeed_m_per_sec%10), DEC );
+          DEBUG_PRINT("SPD=");
+          DEBUG_PRINTDEC( (uiWSR_CurrentWindSpeed_m_per_sec/10) );
+          DEBUG_PRINT( "." );
+          DEBUG_PRINTDEC( (uiWSR_CurrentWindSpeed_m_per_sec%10) );
+          DEBUG_PRINTLN("");
 
           milReading = millis();
           milType[3] = millis();
@@ -866,22 +877,11 @@ void RF_Interpreter_WS2355( /*uiICP_CapturedPeriod, bICP_CapturedPeriodWasHigh*/
     //----------------------------------------------------------------------------
     WSR_RESET();
   }
-}
-
-// Float support is hard on arduinos
-// (http://www.arduino.cc/cgi-bin/yabb2/YaBB.pl?num=1164927646) with tweaks
-char *ftoa(char *a, double f, int precision)
-{
-  //TEST_PRINTLN(f);
-  long p[] = {0,10,100,1000,10000,100000,1000000,10000000,100000000};
-  char *ret = a;
-  long heiltal = (long)f;
-  
-  itoa(heiltal, a, 10);
-  while (*a != '\0') a++;
-  *a++ = '.';
-  long desimal = abs((long)((f - heiltal) * p[precision]));
-  itoa(desimal, a, 10);
-  return ret;
+  // Process packet within interrupt
+  if( bICP_WSR_PacketInputPointer != bICP_WSR_PacketOutputPointer )
+  {
+    TEST_PRINT(".");
+    Packet_Converter_WS2355();
+  }
 }
 
