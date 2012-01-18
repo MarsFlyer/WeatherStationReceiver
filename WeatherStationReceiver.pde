@@ -299,8 +299,12 @@ void loop(void)
 
 void Pachube_Send()
 {
+  // Pause interrupts (e.g. RF) during sending data
+  noInterrupts();
   TEST_PRINTLN("");
   TEST_PRINT("Send to Pachube:");
+  TEST_PRINT((millis()-milPachube)/1000);
+  TEST_PRINT(" ");
   TEST_PRINTLN(millis()/1000);
   // Reset buffer.
   sprintf(buf, "%s", "");
@@ -311,7 +315,7 @@ void Pachube_Send()
   }
   else {
     TEST_PRINT("Last Temp:");
-    TEST_PRINTLN(milType[0]/1000);
+    TEST_PRINTLN((millis()-milType[0])/1000);
   }
   if ((milType[1] != 0) && (millis() - milType[1]) < milTypeInterval) {
     sprintf(buf2, "1,%d\r\n", bWSR_CurrentHumidity);
@@ -319,7 +323,7 @@ void Pachube_Send()
   }
   else {
     TEST_PRINT("Last Hum:");
-    TEST_PRINTLN(milType[1]/1000);
+    TEST_PRINTLN((millis()-milType[1])/1000);
   }
   if ((milType[2] != 0) && (millis() - milType[2]) < milTypeInterval) {
     fNum = ulWSR_Rainfall_mm_x10;
@@ -328,7 +332,7 @@ void Pachube_Send()
   }
   else {
     TEST_PRINT("Last Rain:");
-    TEST_PRINTLN(milType[2]/1000);
+    TEST_PRINTLN((millis()-milType[2])/1000);
   }
   if ((milType[3] != 0) && (millis() - milType[3]) < milTypeInterval) {
     fNum = uiWSR_CurrentWindSpeed_m_per_sec;
@@ -340,7 +344,7 @@ void Pachube_Send()
   } 
   else {
     TEST_PRINT("Last Wind:");
-    TEST_PRINTLN(milType[3]/1000);
+    TEST_PRINTLN((millis()-milType[3])/1000);
   }
   if (milReading != 0) {
     iCount++;
@@ -356,7 +360,7 @@ void Pachube_Send()
     float fTemperature = -100;
     fTemperature = sensors.getTempCByIndex(0);  // First (only) sensor.
     if (fTemperature > -100) {
-      TEST_PRINT("TEMPINT=");
+      TEST_PRINT("INT=");
       TEST_PRINTLN(fTemperature);
       sprintf(buf2, "6,%s\r\n", dtostrf(fTemperature, 3, 1, fString));
       strcat(buf, buf2);
@@ -375,6 +379,8 @@ void Pachube_Send()
     wdt_reset();
   #endif
   pachube("PUT", buf);
+  TEST_PRINTLN("");
+  interrupts();
 }
 
 /**
@@ -510,6 +516,7 @@ void Packet_Converter_WS2355(void)
         case 0:
         {
           // 0: temperature
+          TEST_PRINT("T");
           // Sensor/packet ID bits are 0x00, temperature is present in this packet
           // Lower nibble of byte 7 is first temperature digit, take care of 3xx offset
           si  = ((bICP_WSR_PacketData[bICP_WSR_PacketOutputPointer][7] & 0x0F) * 100);
@@ -535,6 +542,7 @@ void Packet_Converter_WS2355(void)
         case 1:
         {
           // 1: humidity
+          TEST_PRINT("H");
           //sensor/packet ID bits are 0x01, humidity is present in this packet
           c  = ((bICP_WSR_PacketData[bICP_WSR_PacketOutputPointer][7] & 0x0F) * 10);
           c +=  (bICP_WSR_PacketData[bICP_WSR_PacketOutputPointer][8] >> 4);
@@ -552,6 +560,7 @@ void Packet_Converter_WS2355(void)
         case 2:
         {
           // 2: rainfall
+          TEST_PRINT("R");
           si  = (sint)(bICP_WSR_PacketData[bICP_WSR_PacketOutputPointer][7] & 0x0F) << 8;
           si +=        bICP_WSR_PacketData[bICP_WSR_PacketOutputPointer][8];
           uiWSR_RainfallCount = (uint)si;
@@ -573,7 +582,8 @@ void Packet_Converter_WS2355(void)
         case 3:
         {
           // 3: wind direction and speed
-          // Sensor/packet ID bits are 0x03, wind data is present in this packet
+           TEST_PRINT("W");
+         // Sensor/packet ID bits are 0x03, wind data is present in this packet
           // Wind direction
           bWSR_CurrentWindDirection = (bICP_WSR_PacketData[bICP_WSR_PacketOutputPointer][8] & 0x0F);
 

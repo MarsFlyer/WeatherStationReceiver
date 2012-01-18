@@ -3,6 +3,8 @@ GET
 PUT
 */
 
+///#define DATESET 1
+
 byte server[4];
 long lastConnectionTime;
 ///Client client(server, 80);
@@ -35,7 +37,8 @@ String pachube(char* verb, char* dataStr)
 
   int iLen = strlen(dataStr);
   int iAttempts = 0;
-  while(iAttempts++ < 5)
+  boolean bOK = false;
+  while(iAttempts++ < 2 && bOK==false)
   {
     TEST_PRINT(freeMemory());
     TEST_PRINT(" Connect ");
@@ -104,7 +107,8 @@ String pachube(char* verb, char* dataStr)
         client.print("PUT /v2/feeds/");
         client.print(FEEDPUT);
         client.print(".csv HTTP/1.1\r\nHost: api.pachube.com\r\nX-PachubeApiKey: ");
-        client.print(APIKEY);
+        client.print(APIKEY1);
+        client.print(APIKEY2);
         client.print("\r\nContent-Type: text/csv\r\nUser-Agent: Arduino\r\nContent-Length: ");
         client.print(iLen, DEC);
         // There needs to be an empty line after the data.
@@ -131,6 +135,7 @@ String pachube(char* verb, char* dataStr)
       TEST_PRINTLN(" Sent.");
     }
 
+    int iLine = 0;
     while (client.connected())  // Get response.
     {
       int line_cursor = 0;
@@ -140,7 +145,13 @@ String pachube(char* verb, char* dataStr)
         if (client.available())
         {
           char c = client.read();
-          DEBUG_PRINT(c);
+          #ifdef TESTING
+            if (bOK==false) {
+              TEST_PRINT(c);
+            }
+          #else
+            DEBUG_PRINT(c);
+          #endif
           if (c == '\n') {buf2[line_cursor] = '\0'; break;}
           // Ignore CRs
           if (c != '\r')
@@ -152,6 +163,7 @@ String pachube(char* verb, char* dataStr)
           }
         }
       }
+      iLine++;
       ///Serial.println(line);
       if (line_cursor == 0) {break;}
       ///results += line;   // Only send the actual result lines.
@@ -162,7 +174,8 @@ String pachube(char* verb, char* dataStr)
         // note the time that the connection was made:
         long lastConnectionTime = millis();
         iConnections++;
-        iAttempts = 9; // No need to try again.
+        ///iAttempts = 9; // No need to try again.
+        bOK = true;
       }
       #ifdef DATESET
         if ((buf2[0] == 'D') && (buf2[1] == 'a') && (buf2[2] == 't') && (buf2[3] == 'e') && (buf2[4] == ':')) { 
