@@ -301,6 +301,7 @@ void Pachube_Send()
 {
   // Pause interrupts (e.g. RF) during sending data
   noInterrupts();
+  SPI.begin;
   TEST_PRINTLN("");
   TEST_PRINT("Send to Pachube:");
   TEST_PRINT((millis()-milPachube)/1000);
@@ -359,7 +360,7 @@ void Pachube_Send()
     sensors.requestTemperatures(); // Send the command to get temperatures
     float fTemperature = -100;
     fTemperature = sensors.getTempCByIndex(0);  // First (only) sensor.
-    if (fTemperature > -100) {
+    if (fTemperature > -100 && fTemperature < 100) {
       TEST_PRINT("INT=");
       TEST_PRINTLN(fTemperature);
       sprintf(buf2, "6,%s\r\n", dtostrf(fTemperature, 3, 1, fString));
@@ -380,6 +381,9 @@ void Pachube_Send()
   #endif
   pachube("PUT", buf);
   TEST_PRINTLN("");
+  // Restart the RF state machine and turn interrupts back on.
+  SPI.end;
+  WSR_RESET();
   interrupts();
 }
 
