@@ -207,6 +207,7 @@ unsigned long milLastPacket;  // Last packet from the weather station
                                   // Weather station is normally every 128 seconds
 int iCount = 0;
 int iCount2 = 0;
+boolean bPacket;
 
 /**
  * Initial configuration
@@ -804,6 +805,7 @@ void RF_Interpreter_WS2355( /*uiICP_CapturedPeriod, bICP_CapturedPeriodWasHigh*/
       } else {
         //invalid high period, in the dead zone between short and long bit period lengths
         WSR_RESET();
+        bPacket = false;
       }
     }
     //else
@@ -856,9 +858,13 @@ void RF_Interpreter_WS2355( /*uiICP_CapturedPeriod, bICP_CapturedPeriodWasHigh*/
               //valid packet 00010 start (with lost first zero), realign and continue
               bICP_WSR_PacketData[bICP_WSR_PacketInputPointer][4/*bICP_WSR_PacketInputBitPointer >> 3*/] = B00001000;
               bICP_WSR_PacketInputBitPointer++;      //move up one past the inserted missing bit
+              bPacket = true;
             } else if( b != B00001000 ) {
               //invalid packet start, not 00001, reset
               WSR_RESET();
+              bPacket = false;
+            } else {
+              bPacket = true;
             }
           }
 
@@ -889,7 +895,12 @@ void RF_Interpreter_WS2355( /*uiICP_CapturedPeriod, bICP_CapturedPeriodWasHigh*/
     // PERIOD OUT OF BOUNDS, DISCARD
     // This will throw away any out of range periods and reset the state machine, high or low.
     //----------------------------------------------------------------------------
+    if (bPacket == true) {
+      Serial.print(" bad:");
+      Serial.print(uiICP_CapturedPeriod);
+    }
     WSR_RESET();
+    bPacket = false;
   }
   // Process packet within interrupt
   if( bICP_WSR_PacketInputPointer != bICP_WSR_PacketOutputPointer )

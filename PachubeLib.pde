@@ -38,7 +38,7 @@ String pachube(char* verb, char* dataStr)
   int iLen = strlen(dataStr);
   int iAttempts = 0;
   boolean bOK = false;
-  while(iAttempts++ < 2 && bOK==false)
+  while(iAttempts++ < 4 && bOK==false)
   {
     TEST_PRINT(freeMemory());
     TEST_PRINT(" Connect ");
@@ -61,10 +61,10 @@ String pachube(char* verb, char* dataStr)
     Client client(server, 80);
     if (!client.connect()) {
       ///TEST_PRINTLN("connect failed");
-      if (iAttempts >= 4) {
+      if (iAttempts >= 2) {
         procReset();
       }
-      else if (iAttempts >= 2) {
+      else if (iAttempts >= 3) {
         ethernetInit();
       }
       else {
@@ -252,6 +252,8 @@ void ethernetInit()
     TEST_PRINTLN("Error getting IP address via DHCP, trying again...");
     delay(15000);
   }
+  Dhcp.getLocalIp(server);
+  TEST_PRINTLN(ip_to_str(server));
   /*
   const byte* ipAddr = Dhcp.getLocalIp();
   TEST_PRINT("IP:");
