@@ -51,7 +51,7 @@ Maybe add:
 */
 
 // Debug settings
-#define TESTING 1
+///#define TESTING 1
 ///#define DEBUG 1
 #define ONEWIRE 1
 ///#define WATCHDOG 1
@@ -72,7 +72,7 @@ Maybe add:
 #include "PachubeConfig.h"
 #include <Ethernet.h>      // For sending to pachube
 #include <SPI.h>           // needed by Ethernet.h
-#include <Time.h>          // For time sync
+///#include <Time.h>          // For time sync
 #include <string.h>
 //#include <avr/pgmspace.h>  // To store http literal strings
 #include <MemoryFree.h>    // To check memory problems.
@@ -82,8 +82,8 @@ Maybe add:
   #include <OneWire.h>            // Internal temperature.
   #include <DallasTemperature.h>
 #endif
-#include <Dhcp.h>
-#include <dns.h>
+///#include <Dhcp.h>
+///#include <dns.h>
 
 char* kHostname = "api.pachube.com";
 /*--------------------------------------------------------------------------------------
@@ -259,7 +259,8 @@ void loop(void)
   // Extra calculations maybe preventing collection of packets, so only check every second.
   ///if (false) {
   if (millis() > milSecond) {
-    milSecond = millis() + 1000; 
+    milSecond = millis() + 1000;
+    ///TEST_PRINT("."); 
     
     // Watch Dog Timer will reset the arduino if it doesn't get "wdt_reset();" every 8 sec
     #ifdef WATCHDOG
@@ -301,13 +302,13 @@ void loop(void)
 void Pachube_Send()
 {
   // Pause interrupts (e.g. RF) during sending data
-  noInterrupts();
-  SPI.begin;
   TEST_PRINTLN("");
   TEST_PRINT("Send to Pachube:");
   TEST_PRINT((millis()-milPachube)/1000);
   TEST_PRINT(" ");
   TEST_PRINTLN(millis()/1000);
+  ///noInterrupts();
+  SPI.begin;
   // Reset buffer.
   sprintf(buf, "%s", "");
   if ((milType[0] != 0) && (millis() - milType[0]) < milTypeInterval) {
