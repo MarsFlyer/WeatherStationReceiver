@@ -18,7 +18,7 @@ typedef signed int         sint; //16bit
 
 #define WSR_TIMER_PERIOD_US          4                            //Timer1 resolution is 4uS
 //master period width filter
-#define WSR_PERIOD_FILTER_MIN        ( 260/WSR_TIMER_PERIOD_US)   //min 300uS  allowed through filter
+#define WSR_PERIOD_FILTER_MIN        ( 200/WSR_TIMER_PERIOD_US)   //min 300uS  allowed through filter - reduced to 57 cycles rather than 75. This may be temperature sensitive!
 #define WSR_PERIOD_FILTER_MAX        (1800/WSR_TIMER_PERIOD_US)   //max 1800uS allowed through filter
 //detection of a 'SHORT', nominal 367uS
 #define WSR_SHORT_PERIOD_MIN         WSR_PERIOD_FILTER_MIN        //

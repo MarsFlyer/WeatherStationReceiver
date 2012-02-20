@@ -61,7 +61,7 @@ String pachube(char* verb, char* dataStr)
     Client client(server, 80);
     if (!client.connect()) {
       ///TEST_PRINTLN("connect failed");
-      if (iAttempts >= 2) {
+      if (iAttempts >= 4) {
         procReset();
       }
       else if (iAttempts >= 3) {
@@ -276,8 +276,8 @@ void ethernetInit()
   int err = dns.gethostbyname(kHostname, server);
   if (err == 1)
   {
-    Serial.print(kHostname);
-    Serial.print(" resolved to ");
+    TEST_PRINT(kHostname);
+    TEST_PRINT(" resolved to ");
     /*
     if (client.connect()) {
       Serial.println("connected");
@@ -289,7 +289,7 @@ void ethernetInit()
   }
   else
   {
-    Serial.print("DNS lookup failed, defaulted to ");
+    TEST_PRINT("DNS lookup failed, defaulted to ");
     server[0] = 173; server[1] = 203; server[2] = 98; server[3] = 29 ; // api.pachube.com
   }
   TEST_PRINTLN(ip_to_str(server));

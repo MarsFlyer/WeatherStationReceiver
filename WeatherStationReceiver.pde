@@ -618,7 +618,7 @@ void Packet_Converter_WS2355(void)
         }
       }
     } else {
-      Serial.print( " bad checksum or packet header" );
+      TEST_PRINT( " bad checksum or packet header" );
     }
 
     //----------------------------------------------------------------------------
@@ -896,8 +896,8 @@ void RF_Interpreter_WS2355( /*uiICP_CapturedPeriod, bICP_CapturedPeriodWasHigh*/
     // This will throw away any out of range periods and reset the state machine, high or low.
     //----------------------------------------------------------------------------
     if (bPacket == true) {
-      Serial.print(" bad:");
-      Serial.print(uiICP_CapturedPeriod);
+      TEST_PRINT(" bad:");
+      TEST_PRINT(uiICP_CapturedPeriod);
     }
     WSR_RESET();
     bPacket = false;
