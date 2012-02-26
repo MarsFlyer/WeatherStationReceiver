@@ -73,7 +73,7 @@ Maybe add:
 #include <Ethernet.h>      // For sending to pachube
 #include <SPI.h>           // needed by Ethernet.h
 ///#include <Time.h>          // For time sync
-#include <string.h>
+///#include <string.h>
 //#include <avr/pgmspace.h>  // To store http literal strings
 #include <MemoryFree.h>    // To check memory problems.
 #include <avr/io.h>
@@ -203,7 +203,7 @@ unsigned long milLastPacket;  // Last packet from the weather station
 #define milReadingInterval 3000   // Wait before sending data. 3 sec
 #define milPachubeInterval 30000  // Don't send data more frequently. 30 sec
 #define milTypeInterval 300000    // Don't send stale data. 600000 = 10 mins * 60 sec * 1000 ms
-#define milSendInterval 150000    // Minimum period of sending. 3 mins * 60 sec * 1000 ms
+#define milSendInterval 150000 //30000    // Minimum period of sending. 3 mins * 60 sec * 1000 ms
                                   // Weather station is normally every 128 seconds
 int iCount = 0;
 int iCount2 = 0;
@@ -216,7 +216,7 @@ void setup(void)
 {
   #ifdef TESTING
     Serial.begin( 38400 );   //using the serial port at 38400bps for debugging and logging
-    Serial.println( F("Weather Station Receiver has powered up") );
+    Serial.println( "Weather Station Receiver has powered up" );
   #endif
 
   ethernetInit();
@@ -240,7 +240,7 @@ void setup(void)
   interrupts();   // Enable interrupts (NOTE: is this necessary? Should be enabled by default)
 
   TEST_PRINT(freeMemory());
-  TEST_PRINTLN(F("=memory"));
+  TEST_PRINTLN("=memory");
 
   #ifdef WATCHDOG
     MCUSR=0;
@@ -303,21 +303,21 @@ void Pachube_Send()
 {
   // Pause interrupts (e.g. RF) during sending data
   TEST_PRINTLN("");
-  TEST_PRINT(F("Send to Pachube:"));
+  TEST_PRINT("Send to Pachube:");
   TEST_PRINT((millis()-milPachube)/1000);
   TEST_PRINT(" ");
   TEST_PRINTLN(millis()/1000);
   ///noInterrupts();
   SPI.begin;
   // Reset buffer.
-  sprintf(buf, "%s", "");
+  sprintf(buf, "");
   if ((milType[0] != 0) && (millis() - milType[0]) < milTypeInterval) {
     fNum = siWSR_CurrentTemperature;
     sprintf(buf2, "0,%s\r\n", dtostrf(fNum/10, 3, 1, fString));
     strcat(buf, buf2);
   }
   else {
-    TEST_PRINT(F("Last Temp:"));
+    TEST_PRINT("Last Temp:");
     TEST_PRINTLN((millis()-milType[0])/1000);
   }
   if ((milType[1] != 0) && (millis() - milType[1]) < milTypeInterval) {
@@ -325,7 +325,7 @@ void Pachube_Send()
     strcat(buf, buf2);
   }
   else {
-    TEST_PRINT(F("Last Hum:"));
+    TEST_PRINT("Last Hum:");
     TEST_PRINTLN((millis()-milType[1])/1000);
   }
   if ((milType[2] != 0) && (millis() - milType[2]) < milTypeInterval) {
@@ -334,7 +334,7 @@ void Pachube_Send()
     strcat(buf, buf2);
   }
   else {
-    TEST_PRINT(F("Last Rain:"));
+    TEST_PRINT("Last Rain:");
     TEST_PRINTLN((millis()-milType[2])/1000);
   }
   if ((milType[3] != 0) && (millis() - milType[3]) < milTypeInterval) {
@@ -346,7 +346,7 @@ void Pachube_Send()
     strcat(buf, buf2);
   } 
   else {
-    TEST_PRINT(F("Last Wind:"));
+    TEST_PRINT("Last Wind:");
     TEST_PRINTLN((millis()-milType[3])/1000);
   }
   if (milReading != 0) {
@@ -355,7 +355,7 @@ void Pachube_Send()
     strcat(buf, buf2);
   }
   else {
-    TEST_PRINTLN(F("No weather data."));
+    TEST_PRINTLN("No weather data.");
   }
   // Internal Temperature.
   #ifdef ONEWIRE
@@ -363,7 +363,7 @@ void Pachube_Send()
     float fTemperature = -100;
     fTemperature = sensors.getTempCByIndex(0);  // First (only) sensor.
     if (fTemperature > -100 && fTemperature < 100) {
-      TEST_PRINT(F("INT="));
+      TEST_PRINT("INT=");
       TEST_PRINTLN(fTemperature);
       sprintf(buf2, "6,%s\r\n", dtostrf(fTemperature, 3, 1, fString));
       strcat(buf, buf2);
@@ -375,8 +375,8 @@ void Pachube_Send()
   
   // Send to pachube
   TEST_PRINT(freeMemory());
-  TEST_PRINTLN(F(" pachube"));
-  strcat(buf, "\0");
+  TEST_PRINTLN(" pachube");
+  ///strcat(buf, "\0");
   TEST_PRINTLN(buf);
   #ifdef WATCHDOG
     wdt_reset();

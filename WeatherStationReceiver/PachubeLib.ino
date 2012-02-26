@@ -11,7 +11,7 @@ long lastConnectionTime;
 
 #define MAX_STRING 100
 
-String pachube(char* verb, char* dataStr)
+int pachube(char* verb, char* dataStr)
 {
   // The data needs line feeds.
   // Example: "0,8\r\n1,21.2\r\n";
@@ -19,21 +19,23 @@ String pachube(char* verb, char* dataStr)
   if (millis() - lastConnectionTime < 250) 
   { 
     TEST_PRINTLN(F("Too Soon."));
-    return "";
+    return false;
   }
 
   int iLen = strlen(dataStr);
+  TEST_PRINTLN(iLen);
+  TEST_PRINTLN(dataStr);
   int iAttempts = 0;
   boolean bOK = false;
   while(iAttempts++ < 4 && bOK==false)
   {
     TEST_PRINT(freeMemory());
-    TEST_PRINT(F(" Connect "));
+    TEST_PRINT(" Connect ");
     TEST_PRINTLN(iAttempts);
     
     EthernetClient client;
     if (!client.connect(serverName, 80)) {
-      TEST_PRINTLN(F("connect failed"));
+      TEST_PRINTLN("connect failed");
       if (iAttempts >= 4) {
         procReset();
       }
@@ -45,12 +47,12 @@ String pachube(char* verb, char* dataStr)
       }
       continue;
     }
-    DEBUG_PRINTLN(F("connected"));
+    DEBUG_PRINTLN("connected");
       
     if (verb == "GET")
     {
       DEBUG_PRINT(freeMemory());
-      DEBUG_PRINTLN(F(" GET"));
+      DEBUG_PRINTLN(" GET");
   /*    client.print("GET /api/");
       client.print(getString(pachubeFeed)); 
       client.print(getString(httpHost)); 
@@ -61,24 +63,29 @@ String pachube(char* verb, char* dataStr)
     {
       // send the HTTP PUT request. 
       TEST_PRINT(freeMemory());
-      TEST_PRINTLN(F(" PUT"));
+      TEST_PRINTLN(" PUT");
       
-      client.print(F("PUT /v2/feeds/"));
+      //httpSend(PSTR("PUT /v2/feeds/"));
+
+      client.print("PUT /v2/feeds/");
       client.print(FEEDPUT);
-      client.print(F(".csv HTTP/1.1\r\nHost: api.pachube.com\r\nX-PachubeApiKey: "));
+      client.print(".csv HTTP/1.1");
+      client.print("\r\nHost: api.pachube.com");
+      client.print("\r\nX-PachubeApiKey: ");
       client.print(APIKEY1);
       client.print(APIKEY2);
-      client.print(F("\r\nContent-Type: text/csv\r\n"));
-      client.print(F("User-Agent: Arduino\r\nContent-Length: "));
+      client.print("\r\nContent-Type: text/csv");
+      client.print("\r\nUser-Agent: Arduino");
+      client.print("\r\nContent-Length: ");
       client.print(iLen);
       // There needs to be an empty line after the data.
       ///client.print("\r\nConnection: close\r\n\r\n");
-      client.print(F("\r\n\r\n"));
+      client.print("\r\n\r\n");
       client.print(dataStr);
-      client.print(F("\r\n\r\n"));
+      ///client.print("\r\n"); //r\n");  // Not required as the data string is finished with \r\n.
 
       TEST_PRINT(freeMemory());
-      TEST_PRINTLN(F(" Sent."));
+      TEST_PRINTLN(" Sent.");
     }
 
     int iLine = 0;
@@ -116,7 +123,7 @@ String pachube(char* verb, char* dataStr)
       ///if (line.startsWith("Date:")) { 
       if (strstr(buf2, "200 OK") != NULL){
          TEST_PRINT(freeMemory());
-         TEST_PRINTLN(F(" OK RECVD"));
+         TEST_PRINTLN(" OK RECVD");
         // note the time that the connection was made:
         long lastConnectionTime = millis();
         iConnections++;
@@ -134,14 +141,14 @@ String pachube(char* verb, char* dataStr)
           int yr = intPart(buf2,18,22);
           ///setTime(hr,min,sec,day,month,yr);
           DEBUG_PRINT(freeMemory());
-          DEBUG_PRINTLN(F(" Sync:"));
+          DEBUG_PRINTLN(" Sync:");
           ///TEST_PRINTLN(datetimeString(now()));
         }
       #endif
       ///line = "";
     }
 
-    DEBUG_PRINTLN(F("disconnecting."));
+    DEBUG_PRINTLN("disconnecting.");
     client.stop();
     while(client.status() != 0) {
       delay(5);
@@ -167,12 +174,12 @@ char* getString(const char* str) {
   ///TEST_PRINT(stringBuffer);
   return stringBuffer;
 }
-/*
-void httpSend(String in) {
-  client.print(in);
+
+void httpSend(char* in) {
+  //client.print(in);
   TEST_PRINT(in);
 }
-*/
+
 void ethernetInit()
 {
   int ms = 1200;
