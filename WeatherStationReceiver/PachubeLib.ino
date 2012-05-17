@@ -34,7 +34,8 @@ int pachube(char* verb, char* dataStr)
     TEST_PRINTLN(iAttempts);
     
     EthernetClient client;
-    if (!client.connect(serverName, 80)) {
+    IPAddress ip = Ethernet.localIP();
+    if (!client.connect(serverName, 80) || (ip[0]==0)) {
       TEST_PRINTLN("connect failed");
       if (iAttempts >= 4) {
         procReset();
@@ -215,7 +216,7 @@ void procReset()
 {
   TEST_PRINTLN(F("Reset board"));
   MCUSR=0;
-  wdt_enable(WDTO_1S); // setup Watch Dog Timer to 1 sec
-  delay(2000);
+  wdt_enable(WDTO_4S); // setup Watch Dog Timer and wait longer to force reset.
+  delay(6000);
 }
 

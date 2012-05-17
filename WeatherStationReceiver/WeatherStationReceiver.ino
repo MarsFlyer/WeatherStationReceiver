@@ -54,7 +54,7 @@ Maybe add:
 #define TESTING 1
 ///#define DEBUG 1
 #define ONEWIRE 1
-///#define WATCHDOG 1
+#define WATCHDOG 1
 
 // Hardware ports:
  //RF Data Port D8   
@@ -197,23 +197,26 @@ int iConnections = 0;
 unsigned long milSecond;
 unsigned long milWatchdog;
 #define milWatchdogInterval 4000  // Watchdog timer resets the board after 8000.
-unsigned long milReading;     // Last data from WSR
+unsigned long milReading;     // Last data from WSR in this loop
+unsigned long milReadingLast; // Last data from WSR
 unsigned long milPachube;     // Last sending to Pachube
 unsigned long milLastPacket;  // Last packet from the weather station
-#define milReadingInterval 3000   // Wait before sending data. 3 sec
+#define milReadingInterval  3000  // Wait before sending data. 3 sec
 #define milPachubeInterval 30000  // Don't send data more frequently. 30 sec
-#define milTypeInterval 300000    // Don't send stale data. 600000 = 10 mins * 60 sec * 1000 ms
-#define milSendInterval 150000 //30000    // Minimum period of sending. 3 mins * 60 sec * 1000 ms
-                                  // Weather station is normally every 128 seconds
+#define milTypeInterval   320000  // Don't send stale data. 2.5 * 128 * 1000 ms ~ 5.5 mins
+#define milSendInterval   150000  // Weather station is normally every 128 seconds
+#define milResetInterval  448000  // Reset if no weather data for a long time. 3.5 * 128 * 1000 ms ~ 7.5 mins 
 int iCount = 0;
 int iCount2 = 0;
 boolean bPacket;
+int iCyclesMin = -1;
 
 /**
  * Initial configuration
  */
 void setup(void)
 {
+  wdt_disable();  // Prevents reboot looping
   #ifdef TESTING
     Serial.begin( 38400 );   //using the serial port at 38400bps for debugging and logging
     Serial.println( "Weather Station Receiver has powered up" );
@@ -269,11 +272,11 @@ void loop(void)
         wdt_reset();
         /* TEST_PRINT("Reset Watchdog:");
         TEST_PRINTLN(millis()/1000); */
-        if ((milPachube != 0) && (millis() - milPachube) > milTypeInterval) {
-           digitalWrite(pinLED, LOW);
-        }
       }
     #endif
+    if ((milPachube != 0) && (millis() - milPachube) > milTypeInterval) {
+       digitalWrite(pinLED, LOW);
+    }
     
     // Wait for all recent packets to be received.
     // Second set often includes extra data e.g. Humidity!
@@ -353,9 +356,14 @@ void Pachube_Send()
     iCount++;
     sprintf(buf2, "5,%d\r\n", iCount);
     strcat(buf, buf2);
+    milReadingLast = milReading;
   }
   else {
     TEST_PRINTLN("No weather data.");
+    if ((millis() - milReadingLast) > milResetInterval) {
+      TEST_PRINTLN("Too long - reset.");
+      procReset();
+    }
   }
   // Internal Temperature.
   #ifdef ONEWIRE
@@ -372,12 +380,17 @@ void Pachube_Send()
   iCount2++;
   sprintf(buf2, "7,%d\r\n", iCount2);
   strcat(buf, buf2);
+  // Good packet minimum cycles 
+  if (iCyclesMin > 0) {
+    sprintf(buf2, "8,%d\r\n", iCyclesMin);
+    strcat(buf, buf2);
+    iCyclesMin = -1;
+  }
   
   // Send to pachube
   TEST_PRINT(freeMemory());
   TEST_PRINTLN(" pachube");
-  ///strcat(buf, "\0");
-  TEST_PRINTLN(buf);
+  ///TEST_PRINTLN(buf);  // printed in Pachube call.
   #ifdef WATCHDOG
     wdt_reset();
   #endif
@@ -517,6 +530,12 @@ void Packet_Converter_WS2355(void)
       // Bits 4 and 5 of this byte are the sensor/packet ID
       b = bICP_WSR_PacketData[bICP_WSR_PacketOutputPointer][5];
       b = (b >> 4) & 0x03;
+      TEST_PRINT("g:");  // Good packet.
+      TEST_PRINT(uiICP_CapturedPeriod);
+      TEST_PRINT(" ");
+      if (uiICP_CapturedPeriod < iCyclesMin) {
+        iCyclesMin = uiICP_CapturedPeriod;
+      }
       switch( b )
       {
         case 0:
@@ -897,7 +916,7 @@ void RF_Interpreter_WS2355( /*uiICP_CapturedPeriod, bICP_CapturedPeriodWasHigh*/
     // This will throw away any out of range periods and reset the state machine, high or low.
     //----------------------------------------------------------------------------
     if (bPacket == true) {
-      TEST_PRINT(" bad:");
+      TEST_PRINT(" b:");  // Bad packet.
       TEST_PRINT(uiICP_CapturedPeriod);
     }
     WSR_RESET();
@@ -906,6 +925,7 @@ void RF_Interpreter_WS2355( /*uiICP_CapturedPeriod, bICP_CapturedPeriodWasHigh*/
   // Process packet within interrupt
   if( bICP_WSR_PacketInputPointer != bICP_WSR_PacketOutputPointer )
   {
+    TEST_PRINTLN("");
     TEST_PRINT(".");
     Packet_Converter_WS2355();
   }
